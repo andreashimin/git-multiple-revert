@@ -46,21 +46,22 @@ else
 fi
 
 create_logs_to_tmpfile() {
-    line=$(git log --oneline | grep -n $@ | cut -d ':' -f1)
+    line=$(git log --oneline --topo-order | grep -n $@ | cut -d ':' -f1)
 
-    content=$(git log -$line --pretty=format:"%h %s")
-
-    # Remove line not contain latestHash
-    if [ $endHash ]; then
-        content=$(echo "$content " | sed "0,/$endHash/d")
-    fi
+    content=$(git log -$line --topo-order --pretty=format:"%h %s")
 
     # Get history revert status
     content=$(echo "$content" | \
         grep -i -v 'merge' | \
         sed '/toggle(disable/ s/^/disable /' | \
         sed '/toggle(disable/! s/^/enable  /')
-    
+
+    # Remove line not contain latestHash
+    if [ $endHash ]; then
+        content=$(echo "$content" | sed "/$endHash/,$ !d")
+        echo "$content"
+    fi
+
     # Auto Revert
     if [ $autoFlag ]; then
         content=$(echo "$content" | sed '/toggle(disable/ s/^disable/enable /;/toggle(disable/! s/^enable /disable/')
@@ -72,6 +73,7 @@ create_logs_to_tmpfile() {
 }
 
 create_logs_to_tmpfile $hash
+exit 1;
 
 if [ ! $autoFlag ]; then
     vi $TMP_DEST
